@@ -43,10 +43,10 @@ aapt2="$(find_tool aapt2)"
 zipalign="$(find_tool zipalign)"
 apksigner="$(find_tool apksigner)"
 
-"$aapt2" dump badging "$apk" | rg -q "package: name='com.readlingo.app'"
-unzip -l "$apk" | rg -q 'assets/index\.html'
-unzip -l "$apk" | rg -q 'assets/js/app\.js'
-unzip -l "$apk" | rg -q 'assets/css/style\.css'
+"$aapt2" dump badging "$apk" | grep -Eq "package: name='com.readlingo.app'"
+unzip -l "$apk" | grep -Eq 'assets/index\.html'
+unzip -l "$apk" | grep -Eq 'assets/js/app\.js'
+unzip -l "$apk" | grep -Eq 'assets/css/style\.css'
 "$zipalign" -c -p 4 "$apk"
 "$apksigner" verify --verbose "$apk" >/dev/null
 
