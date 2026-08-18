@@ -1,0 +1,51 @@
+name: Bug report
+description: 报告一个可以复现的问题
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请先确认问题仍存在于最新构建，并尽量提供可复现步骤。
+  - type: input
+    id: device
+    attributes:
+      label: 设备与 Android 版本
+      placeholder: 例如：OPPO PJZ110 / Android 16
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: ReadLingo 版本或提交
+      placeholder: 例如：0.1.0 或 commit hash
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开……
+        2. 点击……
+        3. 看到……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 截图或日志
+      description: 请先移除个人信息、词书内容和账号信息。

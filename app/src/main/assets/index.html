@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ReadLingo · 英语原版阅读器</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ 书架视图 ============ -->
+<div id="view-library" class="view active">
+  <header class="lib-header">
+    <div class="lib-title">
+      <h1>ReadLingo</h1>
+      <span class="lib-subtitle">英语原版阅读 · 点词即译</span>
+    </div>
+    <div class="lib-actions">
+      <button id="btn-theme-lib" class="btn btn-ghost" title="主题">🌙 主题</button>
+      <button id="btn-vocab" class="btn btn-ghost" title="生词本">
+        📖 生词本 <span id="vocab-count" class="badge">0</span>
+      </button>
+      <button id="btn-import" class="btn btn-primary">＋ 导入书</button>
+      <input type="file" id="file-input" accept=".epub,application/epub+zip" hidden>
+    </div>
+  </header>
+
+  <div id="collections-bar" class="collections-bar hidden">
+    <div class="collections-title">📁 我的合集</div>
+    <div id="collections-list" class="collections-list"></div>
+  </div>
+
+  <div id="collection-header" class="collection-header hidden">
+    <button id="btn-collection-back" class="btn btn-icon" title="返回全部">←</button>
+    <span id="collection-name" class="collection-name"></span>
+  </div>
+
+  <div id="library-grid" class="library-grid"></div>
+  <div id="library-empty" class="empty-state hidden">
+    <div class="empty-icon">📚</div>
+    <p id="empty-text">书架上还没有书</p>
+    <p class="empty-hint">点击「导入书」添加本地 EPUB 文件</p>
+  </div>
+</div>
+
+  <!-- 书架上下文菜单（长按书/合集） -->
+  <div id="lib-menu" class="lib-menu hidden"></div>
+  <!-- 输入弹窗（创建合集/重命名） -->
+  <div id="dialog-mask" class="dialog-mask hidden"></div>
+  <div id="input-dialog" class="input-dialog hidden">
+    <div class="dialog-title" id="dialog-title">输入名称</div>
+    <input id="dialog-input" class="dialog-input" type="text" maxlength="40" placeholder="请输入名称" />
+    <div class="dialog-actions">
+      <button id="dialog-cancel" class="btn btn-ghost">取消</button>
+      <button id="dialog-ok" class="btn btn-primary">确定</button>
+    </div>
+  </div>
+  <!-- 确认弹窗（删除） -->
+  <div id="confirm-dialog" class="input-dialog hidden">
+    <div class="dialog-title">确认操作</div>
+    <div class="dialog-text" id="confirm-text"></div>
+    <div class="dialog-actions">
+      <button id="confirm-cancel" class="btn btn-ghost">取消</button>
+      <button id="confirm-ok" class="btn btn-danger">删除</button>
+    </div>
+  </div>
+
+  <!-- 书架主题选择弹窗 -->
+  <div id="theme-popup" class="theme-popup hidden">
+    <div class="theme-popup-head">
+      <span>🎨 选择主题</span>
+      <button id="theme-popup-close" class="btn btn-icon">✕</button>
+    </div>
+    <div class="seg-control" id="seg-theme-lib">
+      <button class="seg-btn" data-theme="light">☀ 亮色</button>
+      <button class="seg-btn" data-theme="sepia">📜 羊皮纸</button>
+      <button class="seg-btn" data-theme="dark">🌙 暗色</button>
+    </div>
+  </div>
+
+<!-- ============ 阅读器视图 ============ -->
+<div id="view-reader" class="view">
+  <div id="reader-topbar" class="reader-topbar">
+    <button id="btn-back" class="btn btn-icon" title="返回书架">←</button>
+    <span id="reader-title" class="reader-title">—</span>
+    <span id="reader-mode-badge" class="reader-mode-badge">滑动</span>
+    <div class="topbar-tools">
+      <button id="btn-toc" class="btn btn-icon" title="目录">☰</button>
+      <button id="btn-settings" class="btn btn-icon" title="设置">⚙</button>
+    </div>
+  </div>
+
+  <div id="reader-stage" class="reader-stage">
+    <div id="reader-container" class="reader-container"></div>
+  </div>
+
+  <div id="reader-status" class="reader-status" data-mode="bar">
+    <div class="reader-status-head"><span id="progress-label">全书进度</span><span id="progress-text" aria-live="polite">0%</span></div>
+    <div class="progress-track"><div id="progress-bar" class="progress-fill"></div></div>
+  </div>
+
+  <!-- 目录抽屉 -->
+  <div id="toc-drawer" class="drawer hidden">
+    <div class="drawer-head"><span>目录</span><button id="btn-toc-close" class="btn btn-icon">✕</button></div>
+    <ul id="toc-list" class="toc-list"></ul>
+  </div>
+  <div id="drawer-mask" class="drawer-mask hidden"></div>
+
+  <!-- 设置面板遮罩（点击外部关闭设置面板） -->
+  <div id="sheet-mask" class="sheet-mask hidden"></div>
+
+  <!-- 设置面板 -->
+  <div id="settings-panel" class="settings-panel hidden">
+    <div class="settings-head">
+      <span class="settings-title">⚙ 阅读设置</span>
+      <button id="settings-close" class="btn btn-icon">✕</button>
+    </div>
+    <div class="settings-body">
+
+      <div class="settings-group">
+        <div class="settings-label">主题</div>
+        <div class="seg-control" id="seg-theme">
+          <button class="seg-btn" data-theme="light">☀ 亮色</button>
+          <button class="seg-btn" data-theme="sepia">📜 羊皮纸</button>
+          <button class="seg-btn" data-theme="dark">🌙 暗色</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">字号 <span id="font-size-val" class="settings-val">19</span></div>
+        <div class="stepper">
+          <button id="font-minus" class="btn stepper-btn">A−</button>
+          <div class="stepper-track"><div id="font-track-fill" class="stepper-fill" style="width:50%"></div></div>
+          <button id="font-plus" class="btn stepper-btn">A＋</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">行距 <span id="line-height-val" class="settings-val">1.8</span></div>
+        <div class="stepper">
+          <button id="lh-minus" class="btn stepper-btn">−</button>
+          <div class="stepper-track"><div id="lh-track-fill" class="stepper-fill" style="width:50%"></div></div>
+          <button id="lh-plus" class="btn stepper-btn">＋</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">字体</div>
+        <div class="font-control-row">
+          <select id="font-select" class="font-select" aria-label="选择阅读字体">
+            <option value="literata">Literata · 英文衬线</option>
+            <option value="source-serif">Source Serif · 英文衬线</option>
+            <option value="inter">Inter · 无衬线</option>
+            <option value="hyperlegible">Hyperlegible · 易读</option>
+            <option value="songti">宋体 · 中文衬线</option>
+            <option value="kaiti">楷体 · 中文手写</option>
+            <option value="heiti">黑体 · 中文无衬线</option>
+          </select>
+          <button id="btn-font-import" class="btn btn-ghost">＋ 导入</button>
+          <input id="font-input" type="file" accept=".woff,.woff2,.ttf,.otf,font/woff,font/woff2,font/ttf,font/otf" multiple hidden>
+        </div>
+        <div id="custom-font-list" class="custom-font-list"></div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">翻页方式</div>
+        <div class="seg-control" id="seg-flow">
+          <button class="seg-btn" data-flow="paginated">📄 滑动</button>
+          <button class="seg-btn" data-flow="scrolled-doc">📜 滚动</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">底部进度显示</div>
+        <div class="seg-control" id="seg-progress">
+          <button class="seg-btn" data-progress="bar">▰ 条形进度</button>
+          <button class="seg-btn" data-progress="page">№ 当前页/总页</button>
+          <button class="seg-btn" data-progress="chapter">⌁ 本章页数</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 自定义选区菜单（替换系统复制/分享菜单） -->
+  <div id="sel-menu" class="sel-menu hidden">
+    <div class="sel-menu-arrow"></div>
+    <button class="sel-btn" data-act="copy">复制</button>
+    <button class="sel-btn" data-act="underline">划线</button>
+    <button class="sel-btn" data-act="word">单词翻译</button>
+    <button class="sel-btn" data-act="sentence">句子翻译</button>
+  </div>
+
+  <!-- 查词浮窗 -->
+  <div id="dict-popup" class="dict-popup hidden">
+    <div class="dict-head">
+      <div class="dict-word-box">
+        <span id="dict-word" class="dict-word">—</span>
+        <span id="dict-phonetic" class="dict-phonetic"></span>
+        <button id="dict-speak" class="btn btn-icon btn-speak" title="发音">🔊</button>
+      </div>
+      <button id="dict-save" class="btn btn-save">☆ 收藏</button>
+      <button id="dict-close" class="btn btn-icon">✕</button>
+    </div>
+    <div id="dict-body" class="dict-body">
+      <div class="dict-loading">查词中…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 生词本视图 ============ -->
+<div id="view-vocab" class="view">
+  <header class="lib-header">
+    <div class="lib-title">
+      <button id="btn-vocab-back" class="btn btn-icon">←</button>
+      <h1>生词本</h1>
+    </div>
+    <div class="lib-actions">
+      <button id="btn-export" class="btn btn-ghost" title="导出 CSV">⤓ 导出</button>
+    </div>
+  </header>
+  <div id="vocab-list" class="vocab-list"></div>
+  <div id="vocab-empty" class="empty-state hidden">
+    <div class="empty-icon">🗒️</div>
+    <p>还没有生词</p>
+    <p class="empty-hint">阅读时长按选择单词，点「☆ 收藏」加入这里</p>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- ============ 背词视图（今日概览 + 词书管理） ============ -->
+<div id="view-study" class="view">
+  <header class="lib-header">
+    <div class="lib-title">
+      <h1>背词</h1>
+      <span class="lib-subtitle">每日计划 · 抗遗忘复习</span>
+    </div>
+    <div class="lib-actions">
+      <button id="btn-study-target" class="btn btn-ghost" title="每日新增目标">🎯 每日新增 <span id="study-target-val">20</span> 词</button>
+      <button id="btn-study-reset" class="btn btn-ghost" title="重置学习进度">↺ 重置</button>
+    </div>
+  </header>
+
+  <div id="study-panel-tabs" class="study-panel-tabs" role="tablist">
+    <button class="study-panel-tab active" data-study-panel="overview">概览</button>
+    <button class="study-panel-tab" data-study-panel="books">词书</button>
+    <button class="study-panel-tab" data-study-panel="stats">统计</button>
+  </div>
+  <div class="study-quick-actions">
+    <button id="btn-study-selected" class="btn btn-ghost">☑ 已选词</button>
+    <button id="btn-study-mastered" class="btn btn-ghost">🧠 熟知词</button>
+  </div>
+
+  <!-- 今日概览：圆形进度 -->
+  <div id="study-overview" class="study-overview">
+    <div class="study-ring-wrap">
+      <svg class="study-ring" viewBox="0 0 120 120">
+        <circle class="study-ring-bg" cx="60" cy="60" r="52"/>
+        <circle id="study-ring-fg" class="study-ring-fg" cx="60" cy="60" r="52"/>
+      </svg>
+      <div class="study-ring-center">
+        <div id="study-pct" class="study-pct">0%</div>
+        <div id="study-ring-label" class="study-ring-label">今日进度</div>
+      </div>
+    </div>
+    <div class="study-stats">
+      <div class="study-stat"><div id="study-count-done" class="study-stat-num">0</div><div class="study-stat-label">今日完成</div></div>
+      <div class="study-stat"><div id="study-count-target" class="study-stat-num">0</div><div class="study-stat-label">每日新增</div></div>
+      <div class="study-stat"><div id="study-count-due" class="study-stat-num">0</div><div class="study-stat-label">待复习</div></div>
+      <div class="study-stat"><div id="study-count-mastered" class="study-stat-num">0</div><div class="study-stat-label">累计熟知</div></div>
+    </div>
+    <div class="study-plan-actions">
+      <button id="btn-study-start" class="btn btn-primary study-start">开始背词</button>
+      <button id="btn-study-review" class="btn btn-ghost study-secondary-action hidden">今日复习</button>
+      <button id="btn-study-tomorrow" class="btn btn-ghost study-secondary-action hidden">提前学明日</button>
+    </div>
+    <div id="study-finished" class="study-finished hidden">🎉 今日新增计划已完成！</div>
+    <div id="study-last-session" class="study-last-session hidden"></div>
+  </div>
+
+  <section id="study-stats-panel" class="study-stats-panel">
+    <div class="study-stats-title"><div><strong>学习数据</strong><span>D-S-R 记忆模型 · 基于你的反馈</span></div><span class="study-stats-badge">本地统计</span></div>
+    <div class="study-stats-cards">
+      <div class="study-data-card"><span>已学习</span><strong id="study-stat-learned">0</strong><small>词</small></div>
+      <div class="study-data-card"><span>累计熟知</span><strong id="study-stat-mastered">0</strong><small>词</small></div>
+      <div class="study-data-card"><span>待复习</span><strong id="study-stat-due">0</strong><small>词</small></div>
+      <div class="study-data-card"><span>今日新增</span><strong id="study-stat-today">0 / 20</strong><small>完成</small></div>
+    </div>
+    <div class="study-chart-card">
+      <div class="study-chart-head"><strong>遗忘曲线</strong><span>预计记忆保留率</span></div>
+      <svg id="forgetting-curve" viewBox="0 0 306 128" preserveAspectRatio="none" aria-label="遗忘曲线">
+        <path class="study-chart-grid" d="M18 22H288 M18 64H288 M18 106H288"></path>
+        <path id="forgetting-curve-area" class="forgetting-curve-area" d="M18 20 L288 100 L288 108 L18 108 Z"></path>
+        <path id="forgetting-curve-path" class="forgetting-curve-path" d="M18 20 L288 100"></path>
+        <g id="forgetting-curve-dots" class="forgetting-curve-dots"></g>
+        <text x="18" y="123">今天</text><text x="132" y="123">7天</text><text x="270" y="123">30天</text>
+      </svg>
+      <div id="study-curve-note" class="study-curve-note">完成第一次反馈后，这里会根据你的实际记忆状态生成动态遗忘曲线。</div>
+    </div>
+    <div class="study-chart-card">
+      <div class="study-chart-head"><strong>学习情况</strong><span>近 7 天</span></div>
+      <div id="study-learning-bars" class="study-learning-bars"></div>
+      <div class="study-legend"><span><i class="legend-new"></i>新增</span><span><i class="legend-review"></i>正确回忆</span><span><i class="legend-forgot"></i>遗忘/模糊</span><b>近30天回忆率 <em id="study-stat-accuracy">—</em> · 当前预测 <em id="study-stat-retention">—</em> · 平均稳定性 <em id="study-stat-interval">—</em></b></div>
+    </div>
+  </section>
+
+  <div id="study-selected-panel" class="study-mastered-panel study-inline-panel hidden">
+    <div class="study-mastered-head"><strong>今日已选单词</strong><button id="study-selected-close" class="btn btn-icon">✕</button></div>
+    <div id="study-selected-list" class="study-mastered-list"></div>
+    <div id="study-selected-empty" class="empty-state">今天还没有选择单词</div>
+  </div>
+
+  <div id="study-mastered-panel" class="study-mastered-panel study-inline-panel hidden">
+    <div class="study-mastered-head"><strong>熟知单词</strong><button id="study-mastered-close" class="btn btn-icon">✕</button></div>
+    <div id="study-mastered-list" class="study-mastered-list"></div>
+    <div id="study-mastered-empty" class="empty-state">还没有熟知单词</div>
+  </div>
+
+  <div class="study-books">
+    <div class="study-books-head">
+      <span class="collections-title">📚 词书</span>
+      <div class="study-book-actions"><button id="btn-study-import" class="btn btn-ghost">＋ 导入词书</button></div>
+      <input type="file" id="wordbook-input" accept=".txt,.csv,text/plain,text/csv" hidden>
+    </div>
+    <div id="study-source-hint" class="study-source-hint">勾选词书后，今日新增将从所选词书中随机抽取；到期复习始终优先。</div>
+    <div id="wordbook-list" class="wordbook-list"></div>
+  </div>
+</div>
+
+<!-- 词书选择器必须位于可滚动的背词页之外；否则背词页的入场 transform 会让
+     position:fixed 相对到滚动容器，导致窄屏下只显示上半块并随页面移动。 -->
+<div id="study-word-picker" class="study-word-picker hidden">
+  <div class="study-word-picker-head">
+    <div><strong id="study-word-picker-title">选择词书</strong><span id="study-word-picker-count" class="study-word-picker-count">已选 0</span></div>
+    <button id="study-word-picker-close" class="btn btn-icon">✕</button>
+  </div>
+  <div class="study-word-picker-tools">
+    <input id="study-word-search" class="study-word-search" type="search" placeholder="搜索单词">
+    <button id="study-word-auto" class="btn btn-primary">自动选今日目标</button>
+    <button id="study-word-clear" class="btn btn-ghost">清空</button>
+  </div>
+  <div id="study-word-picker-list" class="study-word-picker-list"></div>
+  <div class="study-word-picker-footer"><button id="study-word-confirm" class="btn btn-primary">确定加入今日计划</button></div>
+</div>
+
+<!-- ============ 背词会话视图 ============ -->
+<div id="view-study-session" class="view">
+  <header class="lib-header">
+    <div class="lib-title">
+      <button id="btn-study-exit" class="btn btn-icon">←</button>
+      <h1 id="study-session-title">背词</h1>
+    </div>
+    <div class="lib-actions">
+      <button id="btn-study-prev" class="btn btn-ghost study-prev" disabled>‹ 上一个词</button>
+      <span id="study-session-progress" class="study-session-progress">0 / 0</span>
+    </div>
+  </header>
+
+  <div id="study-memory-panel">
+    <div id="study-card" class="study-card">
+      <div id="study-card-source" class="study-card-source">新词</div>
+      <div class="study-card-word" id="study-card-word">—</div>
+      <div class="study-card-phonetic" id="study-card-phonetic"></div>
+      <button id="study-card-speak" class="btn btn-icon btn-speak" title="发音">🔊</button>
+      <div class="study-card-meaning" id="study-card-meaning"></div>
+      <div class="study-card-example" id="study-card-example"></div>
+      <button id="study-reveal" class="btn btn-primary study-reveal">显示释义</button>
+    </div>
+
+    <div class="study-actions">
+      <button id="btn-study-forgot" class="btn study-btn study-btn-forgot" disabled>忘记</button>
+      <button id="btn-study-fuzzy" class="btn study-btn study-btn-fuzzy" disabled>模糊</button>
+      <button id="btn-study-known" class="btn study-btn study-btn-known" disabled>认识</button>
+      <button id="btn-study-master" class="btn study-btn study-btn-master" disabled>熟知</button>
+    </div>
+    <div class="study-hint">先回忆再点「显示释义」；忘记/模糊会在本次稍后再现，认识进入间隔复习，熟知永久免复习</div>
+  </div>
+
+  <div id="study-spell-panel" class="study-spell-panel hidden">
+    <div class="study-spell-title">✍️ 拼写巩固 <span id="study-spell-word-count">1 / 1</span></div>
+    <div class="study-spell-meaning" id="study-spell-meaning">中文释义</div>
+    <div class="study-spell-blanks" id="study-spell-blanks">_ _ _ _</div>
+    <button id="study-spell-speak" class="btn btn-icon btn-speak" title="发音">🔊</button>
+    <input id="study-spell-input" class="study-spell-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="输入英文拼写">
+    <div class="study-spell-actions"><button id="study-spell-check" class="btn btn-primary">检查拼写</button><button id="study-spell-show" class="btn btn-ghost">显示答案</button></div>
+    <div id="study-spell-feedback" class="study-spell-feedback"></div>
+    <div class="study-hint">必须拼写正确才计入今日完成；下划线数量代表字母数量</div>
+  </div>
+</div>
+
+<!-- 底部导航：阅读 / 背词 两个模块 -->
+<nav id="bottom-nav" class="bottom-nav" aria-label="主模块导航">
+  <button id="nav-read" class="nav-btn active" aria-label="阅读">
+    <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">阅读</span>
+  </button>
+  <button id="nav-study" class="nav-btn" aria-label="背词">
+    <span class="nav-icon" aria-hidden="true">📚</span><span class="nav-label">背词</span>
+  </button>
+</nav>
+
+<script src="libs/jszip.min.js"></script>
+<script src="libs/epub.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

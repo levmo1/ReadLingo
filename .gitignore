@@ -1,0 +1,51 @@
+# Android / manual build outputs
+build/
+out/
+gen/
+obj/
+bin/
+*.apk
+*.aab
+*.idsig
+*.dex
+*.class
+*.zip
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+.gradle/
+local.properties
+
+# Native / generated tooling
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Signing material and local secrets
+*.jks
+*.keystore
+*.p12
+*.pem
+*.p8
+*.key
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local editor / test artifacts
+.vscode/
+screenshots/
+test-results/
+
+# User data exports and local databases
+*.csv
+*.db
+*.sqlite
+*.sqlite3

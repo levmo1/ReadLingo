@@ -1,0 +1,48 @@
+plugins {
+    id 'com.android.application'
+}
+
+def releaseKeystorePath = System.getenv('READLINGO_KEYSTORE')
+def releaseKeyAlias = System.getenv('READLINGO_KEY_ALIAS')
+def releaseKeystorePassword = System.getenv('READLINGO_KEYSTORE_PASSWORD')
+def releaseKeyPassword = System.getenv('READLINGO_KEY_PASSWORD') ?: releaseKeystorePassword
+
+android {
+    namespace 'com.readlingo.app'
+    compileSdk 34
+    buildToolsVersion '34.0.0'
+
+    defaultConfig {
+        applicationId 'com.readlingo.app'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '0.1.0'
+    }
+
+    signingConfigs {
+        if (releaseKeystorePath && releaseKeyAlias && releaseKeystorePassword) {
+            release {
+                storeFile file(releaseKeystorePath)
+                storePassword releaseKeystorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (releaseKeystorePath && releaseKeyAlias && releaseKeystorePassword) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
