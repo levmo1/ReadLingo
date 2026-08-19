@@ -6,6 +6,7 @@
   <p>
     <a href="#功能">功能</a> ·
     <a href="#快速开始">快速开始</a> ·
+    <a href="#后端构建流程">后端构建流程</a> ·
     <a href="#测试">测试</a> ·
     <a href="#许可证与资源">许可证与资源</a>
   </p>
@@ -89,6 +90,48 @@ export READLINGO_KEY_PASSWORD='你的 key 密码'
 ```
 
 不要把正式 keystore、密码、用户 EPUB、生词本 CSV、IndexedDB 数据或调试日志提交到仓库。
+
+## 后端构建流程
+
+ReadLingo 没有独立部署的云端后端。Android 层的
+[`LocalHttpServer.java`](app/src/main/java/com/readlingo/app/LocalHttpServer.java)
+就是随 APK 一起编译的本地服务：它只绑定 `127.0.0.1`，默认从 8091 端口启动；如果端口被占用，会自动递增后重试。WebView 通过
+`http://localhost:<port>` 加载页面和调用同源接口，避免 `file://` 页面无法正常使用 `fetch()`、IndexedDB 以及跨域音频的问题。
+
+本地服务提供以下接口：
+
+| 接口 | 用途 | 上游服务 |
+| --- | --- | --- |
+| `/api/dict?q=...` | 查询单词释义、音标等信息 | 有道词典 JSON API |
+| `/api/translate?text=...` | 翻译选中的句子或文本 | 有道翻译接口 |
+| `/api/voice?word=...&type=1\|2` | 转发英式/美式发音音频 | 有道 dictvoice |
+
+### 后端修改后的构建与验证
+
+1. 修改 [`LocalHttpServer.java`](app/src/main/java/com/readlingo/app/LocalHttpServer.java)、[`MainActivity.java`](app/src/main/java/com/readlingo/app/MainActivity.java) 或 `AndroidManifest.xml` 中的网络/服务配置。
+2. 设置 Android SDK 并编译 Debug APK：
+
+   ```bash
+   export ANDROID_SDK_ROOT=/path/to/android-sdk
+   ./gradlew assembleDebug
+   ```
+
+3. 运行 Android smoke test，验证本地服务依赖的 APK 资源、包名、对齐和签名：
+
+   ```bash
+   tools/android-smoke-test.sh
+   ```
+
+4. 安装到设备后验证本地服务和代理接口：
+
+   ```bash
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   adb logcat | grep -E 'ReadLingo|AndroidRuntime'
+   ```
+
+   在应用内执行查词、翻译和发音操作即可验证 `/api/dict`、`/api/translate` 和 `/api/voice`。这些请求会从设备直接访问上游 HTTPS 服务；设备没有网络或上游不可用时，代理会返回错误，书架、阅读和本地学习数据仍可使用。
+
+后端代码、WebView 壳和前端资源最终都打包进同一个 APK，不需要单独启动 Node.js、Java 或数据库服务。正式发布时，使用上面的 Release APK 构建流程并配置自己的 keystore。
 
 ### 旧版手工构建入口
 
